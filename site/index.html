@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Improbability Drive</title>
+<meta name="description" content="Makes wildly improbable things happen. Press to begin.">
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=Archivo:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/app.css">
+<script type="module" src="/assets/app.js"></script>
+</head>
+<body>
+<main class="drive" id="drive" data-state="idle">
+  <div class="ghost" aria-hidden="true">42</div>
+
+  <header class="top">
+    <p class="tagline only-idle keep">Makes wildly improbable things happen. <span class="muted">Press to begin.</span></p>
+    <div class="computing only-engaging" aria-live="polite">
+      <span class="label">Improbability factor — computing</span>
+      <span class="pill">DON’T PANIC</span>
+    </div>
+  </header>
+
+  <section class="stage" aria-live="polite">
+    <div class="button-wrap only-idle">
+      <button class="engage" id="engage" type="button" aria-label="Engage the Improbability Drive"><span class="engage-label">ENGAGE</span></button>
+      <span class="tag warn" aria-hidden="true"><span class="light-only">WARNING: MAY CAUSE WHALES</span><span class="dark-only">CAUTION: EXISTENCE MAY FLUCTUATE</span></span>
+      <span class="marginalia aside" aria-hidden="true">absolutely nothing<br>can go wrong*</span>
+    </div>
+
+    <div class="only-engaging engaging-stack" id="engaging">
+      <p class="figure" id="figure">1 : — — — — —</p>
+      <div class="progress" aria-hidden="true"><i id="progress"></i></div>
+      <p class="status" id="status"></p>
+      <p class="reduced-copy" id="reduced-copy" hidden>The Drive is calculating. No numbers will spin; the result will simply appear, which is frankly more improbable.</p>
+    </div>
+
+    <div class="only-result result-stack" id="result"></div>
+  </section>
+
+  <div class="bottom-engaging only-engaging">
+    <button class="engage is-small is-pressed" type="button" disabled aria-hidden="true"><span class="engage-label">ENGAGED</span></button>
+    <ul class="ticker" aria-hidden="true">
+      <li>PETUNIA INDEX ▲ 4.2</li>
+      <li>WHALE ALTITUDE 30,000 FT</li>
+      <li>NORMALITY 12% AND FALLING</li>
+      <li>TEA: GONE COLD</li>
+    </ul>
+  </div>
+
+  <footer class="bottom only-idle keep">
+    <form class="calc" id="calc" autocomplete="off">
+      <label class="visually-hidden" for="scenario">Describe something and the Drive will tell you how improbable it is</label>
+      <input id="scenario" name="scenario" type="text" maxlength="300" placeholder="…or describe something and the Drive will tell you how improbable it is">
+      <button class="btn-calc" type="submit">CALCULATE</button>
+    </form>
+    <p class="foot">
+      <span class="aside">Mostly harmless.</span>
+      <a href="/about">What is this?</a>
+      <span class="aside footnote">*Something can, in fact, go wrong.</span>
+    </p>
+  </footer>
+</main>
+</body>
+</html>

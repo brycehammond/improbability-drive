@@ -1,0 +1,39 @@
+{
+  "random": {
+    "id": "mock0000000petun",
+    "mode": "random",
+    "event": "A bowl of petunias materialises 2 km above Slough and has just enough time to think “oh no, not again.”",
+    "probability": { "exponent": 276709, "display": "2^276,709 to 1 against" },
+    "factors": [
+      { "label": "Petunia spontaneity index", "weight": "×10⁴" },
+      { "label": "Slough airspace policy, 1974 revision", "weight": "×88" },
+      { "label": "Ambient tea temperature (suboptimal)", "weight": "×2.6" },
+      { "label": "It being a Thursday", "weight": "×1.01" }
+    ],
+    "comparison": "Roughly as likely as a sperm whale appearing at 30,000 ft.",
+    "verdict": "Mostly harmless.",
+    "stamp": "HIGHLY IMPROBABLE — OCCURRED ANYWAY",
+    "filedUnder": "THINGS THAT OUGHT NOT HAPPEN, VOL. XXIII · WITNESSED BY THREE PASSING DOLPHINS",
+    "reportNo": "42-8891",
+    "date": "2026-08-22",
+    "vector": "horticultural"
+  },
+  "calculate": {
+    "id": "mock0000000depos",
+    "mode": "calculate",
+    "scenario": "My landlord returns my deposit in full, unprompted.",
+    "event": "The applicant’s landlord returns the deposit in full, without being asked, and in the same decade.",
+    "probability": { "mantissa": 440921, "display": "440,921 to 1 against" },
+    "factors": [
+      { "label": "Landlord benevolence coefficient", "weight": "×310" },
+      { "label": "“Unprompted”, as a legal concept", "weight": "×47" },
+      { "label": "Condition of the oven, disputed", "weight": "×30" }
+    ],
+    "comparison": "Roughly as likely as a pleasant experience at the Vogon planning office.",
+    "verdict": "Do not spend it yet.",
+    "stamp": "IMPROBABLE, BUT NOT INTERESTINGLY SO",
+    "filedUnder": "TENANCY, MIRACLES OF · A COPY HAS BEEN SENT TO THE OVEN",
+    "reportNo": "42-8892",
+    "date": "2026-08-22"
+  }
+}

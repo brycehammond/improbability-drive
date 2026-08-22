@@ -1,0 +1,19 @@
+{
+  "name": "improbability-drive-api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The Improbability Drive's one endpoint, as an Azure Function.",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "func start"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.120.0",
+    "@azure/data-tables": "^13.3.2",
+    "@azure/functions": "^4.16.2"
+  }
+}

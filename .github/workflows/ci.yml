@@ -1,0 +1,36 @@
+name: CI
+
+# Tests, build, and a Bicep lint on every pull request. No Azure credentials
+# are needed, so this runs on forks too.
+
+on:
+  pull_request:
+  push:
+    branches-ignore: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+
+  bicep:
+    name: Bicep builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # `bicep build` is the compiler and the linter: warnings for unused
+      # parameters and bad practice, errors for anything that would not deploy.
+      - name: Compile the templates
+        run: az bicep build --file infra/main.bicep --stdout > /dev/null

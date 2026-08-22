@@ -1,0 +1,155 @@
+name: Deploy
+
+# Provisions the Azure infrastructure with Bicep, then uploads the built site
+# and the function to it.
+#
+# Nothing here is specific to one Azure account. Every account-specific value
+# is a repository variable or secret, listed in README.md under "Deploying to
+# your own account"; `infra/bootstrap.sh` sets all of them up in one go.
+#
+# Secrets are passed to steps through `env:` and referenced as shell variables,
+# never interpolated into a `run:` line, so a value containing shell syntax
+# cannot change what the command does.
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - '.gitignore'
+  workflow_dispatch:
+    inputs:
+      skipInfra:
+        description: 'Skip the Bicep deployment and only upload the app'
+        type: boolean
+        default: false
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write # required for Azure OIDC login; no long-lived credentials
+
+env:
+  APP_NAME: ${{ vars.APP_NAME || 'improbabilitydrive' }}
+  AZURE_LOCATION: ${{ vars.AZURE_LOCATION || 'westus2' }}
+  SWA_LOCATION: ${{ vars.SWA_LOCATION || 'westus2' }}
+  AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP || 'improbabilitydrive-rg' }}
+  SWA_SKU: ${{ vars.SWA_SKU || 'Free' }}
+  ANTHROPIC_MODEL: ${{ vars.ANTHROPIC_MODEL || 'claude-opus-5' }}
+
+jobs:
+  test:
+    name: Test and build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: site
+          path: dist/
+          retention-days: 7
+
+  deploy:
+    name: Deploy to Azure
+    needs: test
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      # Fail here rather than half way through a deployment with a confusing
+      # Azure error. The message names exactly what is missing.
+      - name: Check configuration
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          missing=()
+          [[ -n "$AZURE_CLIENT_ID" ]]       || missing+=("secret AZURE_CLIENT_ID")
+          [[ -n "$AZURE_TENANT_ID" ]]       || missing+=("secret AZURE_TENANT_ID")
+          [[ -n "$AZURE_SUBSCRIPTION_ID" ]] || missing+=("secret AZURE_SUBSCRIPTION_ID")
+          [[ -n "$ANTHROPIC_API_KEY" ]]     || missing+=("secret ANTHROPIC_API_KEY")
+          if (( ${#missing[@]} )); then
+            printf '::error::Not configured for deployment. Missing: %s\n' "$(IFS=', '; echo "${missing[*]}")"
+            echo 'Run infra/bootstrap.sh, or see "Deploying to your own account" in README.md.'
+            exit 1
+          fi
+          echo "Deploying $APP_NAME to resource group $AZURE_RESOURCE_GROUP ($AZURE_LOCATION)."
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy infrastructure (Bicep)
+        if: ${{ inputs.skipInfra != true }}
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          az deployment sub create \
+            --name "improbability-drive-$RUN_NUMBER" \
+            --location "$AZURE_LOCATION" \
+            --template-file infra/main.bicep \
+            --parameters infra/main.bicepparam \
+            --parameters \
+              appName="$APP_NAME" \
+              location="$AZURE_LOCATION" \
+              staticWebAppLocation="$SWA_LOCATION" \
+              resourceGroupName="$AZURE_RESOURCE_GROUP" \
+              skuName="$SWA_SKU" \
+              model="$ANTHROPIC_MODEL" \
+              anthropicApiKey="$ANTHROPIC_API_KEY" \
+            --output none
+          echo "Infrastructure deployed."
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: site
+          path: dist
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      # The function's dependencies ship with the upload: Static Web Apps does
+      # not install them for a pre-built API.
+      - name: Install function dependencies
+        run: npm ci --omit=dev --prefix api
+
+      - name: Upload site and function
+        run: |
+          # Exported rather than passed as --deployment-token, which would put
+          # the token in the process list.
+          export SWA_CLI_DEPLOYMENT_TOKEN="$(az staticwebapp secrets list \
+            --name "$APP_NAME" \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --query properties.apiKey -o tsv)"
+          npx --yes @azure/static-web-apps-cli@2 deploy ./dist \
+            --api-location ./api \
+            --env production
+
+      - name: Summarise
+        run: |
+          host="$(az staticwebapp show --name "$APP_NAME" --resource-group "$AZURE_RESOURCE_GROUP" \
+            --query defaultHostname -o tsv)"
+          {
+            echo "### The Drive is deployed"
+            echo ""
+            echo "- Site: https://$host"
+            echo "- Resource group: \`$AZURE_RESOURCE_GROUP\`"
+            echo "- Model: \`$ANTHROPIC_MODEL\`"
+          } >> "$GITHUB_STEP_SUMMARY"

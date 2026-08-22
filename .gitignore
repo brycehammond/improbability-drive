@@ -1,0 +1,6 @@
+node_modules/
+dist/
+.DS_Store
+api/local.settings.json
+__azurite*
+test-results/

@@ -1,0 +1,24 @@
+{
+  "name": "improbability-drive",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The Improbability Drive, improbabilitydrive.com",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test \"test/**/*.test.mjs\"",
+    "build": "node scripts/build.mjs",
+    "preview": "node scripts/preview.mjs",
+    "dev": "swa start site --api-devserver-url http://localhost:7071",
+    "deploy": "npm run build && swa deploy ./dist --api-location ./api --env production",
+    "postinstall": "cd api && npm install",
+    "dev:api": "cd api && func start --port 7071"
+  },
+  "devDependencies": {
+    "@azure/static-web-apps-cli": "^2.0.10",
+    "playwright": "^1.62.1"
+  }
+}
