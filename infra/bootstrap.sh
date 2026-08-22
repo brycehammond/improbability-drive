@@ -54,8 +54,23 @@ OBJECT_ID="$(az ad sp show --id "$CLIENT_ID" --query id -o tsv)"
 
 # ---------------------------------------------------------------------------
 # 2. Federated credentials: which GitHub workflows may become that identity.
-#    A subject per context; GitHub sends the matching one and Entra checks it.
+#    A subject per context; GitHub sends one and Entra checks it against these.
+#
+#    GitHub is migrating the subject claim from repository *names* to immutable
+#    numeric IDs, so the same workflow may present either
+#
+#      repo:owner/repo:environment:production
+#      repo:owner@1234/repo@5678:environment:production
+#
+#    depending on the repository. Which one you get is not something this
+#    script can choose, so it registers both and lets Entra match whichever
+#    arrives. The IDs are looked up rather than written down, so this stays
+#    correct for any account.
 # ---------------------------------------------------------------------------
+OWNER_ID="$(gh api "repos/${REPO}" -q .owner.id)"
+REPO_ID="$(gh api "repos/${REPO}" -q .id)"
+REPO_IMMUTABLE="${REPO%%/*}@${OWNER_ID}/${REPO##*/}@${REPO_ID}"
+
 add_federated_credential() {
   local name="$1" subject="$2"
   if az ad app federated-credential list --id "$CLIENT_ID" --query "[?name=='$name']" -o tsv | grep -q .; then
@@ -74,6 +89,8 @@ add_federated_credential() {
 say "Federating GitHub Actions to that identity"
 add_federated_credential "${APP_NAME}-branch-${BRANCH}" "repo:${REPO}:ref:refs/heads/${BRANCH}"
 add_federated_credential "${APP_NAME}-environment-production" "repo:${REPO}:environment:production"
+add_federated_credential "${APP_NAME}-branch-${BRANCH}-id" "repo:${REPO_IMMUTABLE}:ref:refs/heads/${BRANCH}"
+add_federated_credential "${APP_NAME}-environment-production-id" "repo:${REPO_IMMUTABLE}:environment:production"
 
 # ---------------------------------------------------------------------------
 # 3. Rights. Contributor over the subscription, because the deployment creates
