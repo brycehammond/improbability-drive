@@ -95,17 +95,24 @@ never in the template, and never served to a browser.
 
 To deploy by hand instead:
 
-    az deployment sub create \
+    ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" az deployment sub create \
       --location westus2 \
       --template-file infra/main.bicep \
-      --parameters infra/main.bicepparam \
-      --parameters anthropicApiKey="$ANTHROPIC_API_KEY"
+      --parameters infra/main.bicepparam
 
     export SWA_CLI_DEPLOYMENT_TOKEN="$(az staticwebapp secrets list \
       -n improbabilitydrive -g improbabilitydrive-rg --query properties.apiKey -o tsv)"
     npm run build && npm run deploy
 
-An empty `anthropicApiKey` is legal and deploys in mock mode: the function
+`infra/main.bicepparam` reads every parameter from the environment with a
+working default, so the same two commands deploy anywhere: set `APP_NAME`,
+`AZURE_LOCATION`, `AZURE_RESOURCE_GROUP` and friends to move it. (A
+`.bicepparam` file has to assign every parameter itself, so this is also what
+makes the template overridable at all -- Azure CLI refuses to combine a params
+file with inline `--parameters`.) The key being an environment variable rather
+than an argument keeps it out of the process list too.
+
+An empty `ANTHROPIC_API_KEY` is legal and deploys in mock mode: the function
 answers from a canned report and calls nothing. Useful for a first look at the
 infrastructure before committing a key to it.
 

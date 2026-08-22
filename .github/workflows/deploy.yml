@@ -76,16 +76,24 @@ jobs:
           AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
+          # Without these there is nothing to sign in to, so stop.
           missing=()
-          [[ -n "$AZURE_CLIENT_ID" ]]       || missing+=("secret AZURE_CLIENT_ID")
-          [[ -n "$AZURE_TENANT_ID" ]]       || missing+=("secret AZURE_TENANT_ID")
-          [[ -n "$AZURE_SUBSCRIPTION_ID" ]] || missing+=("secret AZURE_SUBSCRIPTION_ID")
-          [[ -n "$ANTHROPIC_API_KEY" ]]     || missing+=("secret ANTHROPIC_API_KEY")
+          [[ -n "$AZURE_CLIENT_ID" ]]       || missing+=("AZURE_CLIENT_ID")
+          [[ -n "$AZURE_TENANT_ID" ]]       || missing+=("AZURE_TENANT_ID")
+          [[ -n "$AZURE_SUBSCRIPTION_ID" ]] || missing+=("AZURE_SUBSCRIPTION_ID")
           if (( ${#missing[@]} )); then
-            printf '::error::Not configured for deployment. Missing: %s\n' "$(IFS=', '; echo "${missing[*]}")"
+            printf '::error::Cannot sign in to Azure. Missing secrets: %s\n' "$(IFS=', '; echo "${missing[*]}")"
             echo 'Run infra/bootstrap.sh, or see "Deploying to your own account" in README.md.'
             exit 1
           fi
+
+          # A deployment without a key is legal: the function answers from a
+          # canned report. Say so loudly rather than failing, because a red
+          # build would be the wrong signal for a site that works.
+          if [[ -z "$ANTHROPIC_API_KEY" ]]; then
+            echo '::warning::No ANTHROPIC_API_KEY secret. Deploying in mock mode; the Drive will answer from a canned report. Set it with: gh secret set ANTHROPIC_API_KEY'
+          fi
+
           echo "Deploying $APP_NAME to resource group $AZURE_RESOURCE_GROUP ($AZURE_LOCATION)."
 
       - uses: azure/login@v2
@@ -94,6 +102,8 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      # infra/main.bicepparam reads every value from the environment, so the
+      # key is never an argument and never reaches the process list.
       - name: Deploy infrastructure (Bicep)
         if: ${{ inputs.skipInfra != true }}
         env:
@@ -105,14 +115,6 @@ jobs:
             --location "$AZURE_LOCATION" \
             --template-file infra/main.bicep \
             --parameters infra/main.bicepparam \
-            --parameters \
-              appName="$APP_NAME" \
-              location="$AZURE_LOCATION" \
-              staticWebAppLocation="$SWA_LOCATION" \
-              resourceGroupName="$AZURE_RESOURCE_GROUP" \
-              skuName="$SWA_SKU" \
-              model="$ANTHROPIC_MODEL" \
-              anthropicApiKey="$ANTHROPIC_API_KEY" \
             --output none
           echo "Infrastructure deployed."
 
