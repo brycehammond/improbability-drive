@@ -4,3 +4,4 @@ dist/
 api/local.settings.json
 __azurite*
 test-results/
+OPERATIONS.md
