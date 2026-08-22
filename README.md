@@ -179,8 +179,20 @@ Then, at the registrar:
 
 Record 3 is the awkward one. DNS forbids a `CNAME` at the apex, so pointing a
 naked domain at a hostname needs an `ALIAS`/`ANAME` record (or CNAME
-flattening), which not every registrar offers. If yours does not, the
-alternatives, in order of preference:
+flattening), which not every registrar offers.
+
+`improbabilitydrive.com` is on **Namecheap** BasicDNS, which does support
+`ALIAS`, so all three records go in *Domain List -> Manage -> Advanced DNS ->
+Add New Record*. Two things to watch there:
+
+- Namecheap gives a parked domain a default `CNAME` on `www` pointing at
+  `parkingpage.namecheap.com`, and sometimes a URL Redirect on `@`. **Delete
+  both**, or they will win over the records above.
+- Namecheap writes a trailing dot on `CNAME`/`ALIAS` values. That is normal
+  and correct; leave it.
+
+If your registrar does *not* offer `ALIAS`, the alternatives, in order of
+preference:
 
 1. **Forward the apex to `www`** at the registrar, and treat
    `www.improbabilitydrive.com` as the real address. Costs nothing and keeps
