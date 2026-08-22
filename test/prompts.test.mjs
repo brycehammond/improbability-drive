@@ -25,6 +25,51 @@ test('schema is a closed object with every rendered field required', () => {
   assert.equal(RESULT_SCHEMA.properties.factors.items.additionalProperties, false);
 });
 
+// The API validates the schema and rejects the whole request if it carries a
+// keyword structured outputs does not implement. That failure is a 400 at
+// request time, so it does not show up until something actually presses the
+// button against a real key -- which is exactly how it reached production
+// once. This test is the guard: it walks the schema and fails on the
+// keywords the API has rejected, with the message it rejected them with.
+test('schema avoids keywords structured outputs rejects', () => {
+  const rejected = {
+    maxItems: () => true, // "property 'maxItems' is not supported"
+    minItems: (v) => v > 1, // "'minItems' values other than 0 or 1 are not supported"
+  };
+
+  const walk = (node, path) => {
+    if (!node || typeof node !== 'object') return;
+    for (const [keyword, isBad] of Object.entries(rejected)) {
+      if (keyword in node) {
+        assert.ok(!isBad(node[keyword]), `${path}: ${keyword}=${node[keyword]} is rejected by the API`);
+      }
+    }
+    for (const [key, value] of Object.entries(node)) {
+      if (value && typeof value === 'object') walk(value, `${path}.${key}`);
+    }
+  };
+
+  walk(RESULT_SCHEMA, 'schema');
+});
+
+test('every object in the schema is closed and fully required', () => {
+  const walk = (node, path) => {
+    if (!node || typeof node !== 'object') return;
+    if (node.type === 'object') {
+      assert.equal(node.additionalProperties, false, `${path} must be closed`);
+      assert.deepEqual(
+        [...(node.required ?? [])].sort(),
+        Object.keys(node.properties ?? {}).sort(),
+        `${path} must require every property it declares`,
+      );
+    }
+    for (const value of Object.values(node)) {
+      if (value && typeof value === 'object') walk(value, path);
+    }
+  };
+  walk(RESULT_SCHEMA, 'schema');
+});
+
 test('system prompt is stable per mode and the task differs', () => {
   assert.equal(systemPrompt('random'), systemPrompt('random'));
   assert.notEqual(systemPrompt('random'), systemPrompt('calculate'));

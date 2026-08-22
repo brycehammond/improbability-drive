@@ -71,8 +71,10 @@ export const RESULT_SCHEMA = {
     },
     factors: {
       type: 'array',
-      minItems: 3,
-      maxItems: 4,
+      // Structured outputs support neither `maxItems` nor a `minItems` above
+      // 1, so the count is asked for in prose and enforced in code:
+      // finishReport trims anything past four.
+      description: 'Three or four contributing factors, in descending order of how much they contributed.',
       items: {
         type: 'object',
         additionalProperties: false,
