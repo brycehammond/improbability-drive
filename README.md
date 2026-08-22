@@ -156,13 +156,51 @@ secrets lands a complete site.
 
 ### Custom domain
 
-Once the site is up:
+The live site is `gentle-plant-0d3534a1e.7.azurestaticapps.net`. Pointing a
+domain at it takes two records, and a third that depends on what your
+registrar supports.
+
+Register the domain with the app first, which is what produces the validation
+token:
 
     az staticwebapp hostname set -n improbabilitydrive -g improbabilitydrive-rg \
-      --hostname improbabilitydrive.com
+      --hostname improbabilitydrive.com --validation-method dns-txt-token
 
-Azure returns a validation TXT record and an ALIAS/A target to add at the
-registrar (DreamHost, for this domain). Repeat for `www`.
+    az staticwebapp hostname list -n improbabilitydrive -g improbabilitydrive-rg \
+      --query "[].{domain:name, status:status, token:validationToken}" -o table
+
+Then, at the registrar:
+
+| # | Type | Host | Value | For |
+|---|---|---|---|---|
+| 1 | `CNAME` | `www` | `gentle-plant-0d3534a1e.7.azurestaticapps.net` | the `www` subdomain |
+| 2 | `TXT` | `@` | the validation token from the command above | proving you own the apex |
+| 3 | `ALIAS` / `ANAME` | `@` | `gentle-plant-0d3534a1e.7.azurestaticapps.net` | routing the apex |
+
+Record 3 is the awkward one. DNS forbids a `CNAME` at the apex, so pointing a
+naked domain at a hostname needs an `ALIAS`/`ANAME` record (or CNAME
+flattening), which not every registrar offers. If yours does not, the
+alternatives, in order of preference:
+
+1. **Forward the apex to `www`** at the registrar, and treat
+   `www.improbabilitydrive.com` as the real address. Costs nothing and keeps
+   the app globally distributed.
+2. **Move DNS to Azure DNS** (or Cloudflare, which flattens CNAMEs). The
+   registrar stays where it is; only the nameservers move.
+3. **An `A` record** to the app's `stableInboundIP`. Azure recommends against
+   it -- it pins every visitor to one regional host and gives up the global
+   distribution -- and the field is empty on this app, so it is not currently
+   an option anyway.
+
+`www` has to be registered separately, and only *after* its `CNAME` resolves,
+because that is how Azure validates it:
+
+    az staticwebapp hostname set -n improbabilitydrive -g improbabilitydrive-rg \
+      --hostname www.improbabilitydrive.com --validation-method cname-delegation
+
+Validation is not instant and apex changes can take up to 72 hours to
+propagate. Certificates are issued automatically once a domain reaches
+`Ready`; there is nothing to buy or renew.
 
 ## Notes for later
 
