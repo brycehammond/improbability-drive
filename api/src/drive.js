@@ -12,6 +12,9 @@ import {
   LIMITS,
   RESULT_SCHEMA,
   formatProbability,
+  pickForm,
+  pickOpening,
+  pickSetting,
   pickVector,
   reportNumber,
   systemPrompt,
@@ -54,7 +57,7 @@ async function readInput(request) {
  * Turns the model's structured answer into the report the page renders.
  * Exported for the tests.
  */
-export function finishReport(parsed, { mode, scenario, vector, random = Math.random, today = new Date(), id = newId(today.getTime()) }) {
+export function finishReport(parsed, { mode, scenario, vector, form, random = Math.random, today = new Date(), id = newId(today.getTime()) }) {
   return {
     id,
     mode,
@@ -72,6 +75,7 @@ export function finishReport(parsed, { mode, scenario, vector, random = Math.ran
     reportNo: reportNumber(random),
     date: today.toISOString().slice(0, 10),
     vector: vector?.key,
+    form: form?.key,
   };
 }
 
@@ -93,7 +97,12 @@ export function createDriveHandler({ client, store = createMemoryStore(), limite
       );
     }
 
+    // Two independent dials: what the event is about, and the shape it takes.
+    // Drawn separately so the pair varies rather than the subject alone.
     const vector = input.mode === 'random' ? pickVector(random) : undefined;
+    const form = input.mode === 'random' ? pickForm(random) : undefined;
+    const setting = input.mode === 'random' ? pickSetting(random) : undefined;
+    const opening = input.mode === 'random' ? pickOpening(random) : undefined;
 
     /** @type {any} */ let response;
     try {
@@ -102,7 +111,7 @@ export function createDriveHandler({ client, store = createMemoryStore(), limite
         max_tokens: LIMITS.maxTokens,
         output_config: { effort: 'low', format: { type: 'json_schema', schema: RESULT_SCHEMA } },
         system: [{ type: 'text', text: systemPrompt(input.mode), cache_control: { type: 'ephemeral' } }],
-        messages: [{ role: 'user', content: userMessage({ ...input, vector }) }],
+        messages: [{ role: 'user', content: userMessage({ ...input, vector, form, setting, opening }) }],
       });
     } catch (err) {
       context?.error?.('drive: model call failed', err);
@@ -125,7 +134,7 @@ export function createDriveHandler({ client, store = createMemoryStore(), limite
       return json(502, { error: 'The Drive produced something, but not a number.' });
     }
 
-    const report = finishReport(parsed, { ...input, vector, random });
+    const report = finishReport(parsed, { ...input, vector, form, random });
     try {
       await store.put(report);
     } catch (err) {

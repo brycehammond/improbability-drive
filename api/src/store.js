@@ -34,6 +34,8 @@ export function log2Odds(probability) {
 const summarise = (report) => ({
   id: report.id,
   mode: report.mode,
+  vector: report.vector,
+  form: report.form,
   event: report.event,
   probability: report.probability,
   log2Odds: log2Odds(report.probability),
@@ -79,6 +81,7 @@ export async function createTableStore(connectionString) {
         rowKey: report.id,
         mode: report.mode,
         vector: report.vector ?? '',
+        form: report.form ?? '',
         scenario: report.scenario ?? '',
         event: report.event,
         exponent: report.probability.exponent ?? 0,
@@ -103,13 +106,15 @@ export async function createTableStore(connectionString) {
       const iter = client.listEntities({
         queryOptions: {
           filter: `PartitionKey eq '${PARTITION}'`,
-          select: ['rowKey', 'mode', 'event', 'exponent', 'mantissa', 'log2Odds', 'stamp', 'date'],
+          select: ['rowKey', 'mode', 'vector', 'form', 'event', 'exponent', 'mantissa', 'log2Odds', 'stamp', 'date'],
         },
       });
       for await (const e of iter) {
         out.push({
           id: e.rowKey,
           mode: e.mode,
+          vector: e.vector,
+          form: e.form,
           event: e.event,
           probability: e.exponent > 0 ? { exponent: e.exponent } : { mantissa: e.mantissa },
           log2Odds: e.log2Odds,
